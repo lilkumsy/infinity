@@ -1,0 +1,73 @@
+<?php
+
+// Database connection parameters
+$servername = "localhost";
+$username = "root";
+$password = "";
+$database = "cms";
+
+// Create connection
+$conn = new mysqli($servername, $username, $password, $database);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Query to retrieve a number from the database
+$sql = "SELECT phone_number FROM users WHERE userid = 643169632"; // Assuming user ID 1
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    // Fetch the phone number from the result
+    $row = $result->fetch_assoc();
+    $phoneNumber = $row["phone_number"];
+
+    // Close database connection
+    $conn->close();
+
+    // Generate OTP
+    $otp = mt_rand(100000, 999999);
+
+    // API URL
+    $apiUrl = 'http://ibank.itmbplc.com:8500/RadiusPoints/UtilSMS.aspx';
+
+    // API Parameters
+    $params = [
+        'msgTo' => $phoneNumber,
+        'msgText' => "Your OTP is: $otp",
+        'msgSender' => 'Infinity',
+        'msgChannels' => '00'
+    ];
+
+    // Initialize cURL session
+    $ch = curl_init();
+
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_URL, $apiUrl);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    // Execute the cURL request
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        echo "Failed to send OTP: " . curl_error($ch);
+    } else {
+        // Close cURL session
+        curl_close($ch);
+
+        // Check if the message was sent successfully
+        $formattedResponse = json_decode($response, true);
+        if ($formattedResponse && $formattedResponse['ResponseCode'] === '00') {
+            echo "OTP sent successfully to $phoneNumber.";
+        } else {
+            echo "Failed to send OTP.";
+        }
+    }
+} else {
+    echo "No user found.";
+}
+?>
